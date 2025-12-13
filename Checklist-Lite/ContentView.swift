@@ -54,6 +54,10 @@ struct ContentView: View {
                             TextField("What needs to be done?", text: $newItemText)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 17, weight: .regular, design: .rounded))
+                                .focused($isTextFieldFocused)
+                                .onSubmit {
+                                    addItem()
+                                }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                                 .background(
@@ -68,10 +72,6 @@ struct ContentView: View {
                                             lineWidth: 2
                                         )
                                 )
-                                .focused($isTextFieldFocused)
-                                .onSubmit {
-                                    addItem()
-                                }
                             
                             Button(action: addItem) {
                                 Image(systemName: "plus.circle.fill")
