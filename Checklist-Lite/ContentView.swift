@@ -22,151 +22,161 @@ struct ContentView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background tap area for dismissing keyboard
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        dismissKeyboard()
-                    }
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Search bar
-                    if !viewModel.items.isEmpty {
-                        SearchBarView(viewModel: viewModel)
-                    }
-                    
-                    // Category and Status Filters
-                    if !viewModel.items.isEmpty {
-                        FilterSectionView(viewModel: viewModel)
-                    }
-                    
-                    // Input section
-                    InputSectionView(
-                        viewModel: viewModel,
-                        inputText: $inputText,
-                        isButtonDisabled: $isButtonDisabled,
-                        isTextFieldFocused: Binding(
-                            get: { isTextFieldFocused },
-                            set: { isTextFieldFocused = $0 }
-                        ),
-                        selectedCategoryForNewItem: $selectedCategoryForNewItem,
-                        onAddItem: addItem,
-                        onMultiLinePaste: handleMultiLinePaste
-                    )
-                    
-                    // Item counter and sort
-                    CounterSectionView(viewModel: viewModel) {
-                        #if os(iOS)
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        #endif
-                        showClearAllAlert = true
-                    }
-                    
-                    // List section
-                    if viewModel.filteredAndSortedItems.isEmpty {
-                        EmptyStateView(viewModel: viewModel)
-                    } else {
-                        ListSectionView(
-                            viewModel: viewModel,
-                            onEditItem: { item in
-                                editingItem = item
-                            },
-                            onDeleteItems: deleteItems,
-                            onDismissKeyboard: dismissKeyboard
-                        )
-                    }
-                }
-            }
-            .navigationTitle("Checklist")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
-            #endif
-            .onAppear {
-                // Initialize debounced search text
-                if viewModel.debouncedSearchText != viewModel.searchText {
-                    viewModel.updateSearchText(viewModel.searchText)
-                }
-            }
-            .toolbar {
-                #if os(iOS) || os(visionOS)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .foregroundColor(.primary.opacity(0.7))
-                    }
-                    .accessibilityLabel("Settings")
-                    .frame(minWidth: 44, minHeight: 44)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        if viewModel.hasCompletedItems {
-                            Button(role: .destructive, action: {
-                                showClearCompletedAlert = true
-                            }) {
-                                Label("Clear Completed", systemImage: "checkmark.circle")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundColor(.primary.opacity(0.7))
-                    }
-                    .accessibilityLabel("More options")
-                    .frame(minWidth: 44, minHeight: 44)
-                }
-                #elseif os(macOS)
-                ToolbarItem(placement: .automatic) {
-                    HStack {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .foregroundColor(.primary.opacity(0.7))
-                        }
-                        .accessibilityLabel("Settings")
-                        
-                        Menu {
-                            if viewModel.hasCompletedItems {
-                                Button(role: .destructive, action: {
-                                    showClearCompletedAlert = true
-                                }) {
-                                    Label("Clear Completed", systemImage: "checkmark.circle")
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .foregroundColor(.primary.opacity(0.7))
-                        }
-                        .accessibilityLabel("More options")
-                    }
-                }
+            contentView
+                .navigationTitle("Checklist")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.large)
                 #endif
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsView(viewModel: viewModel)
-            }
-            .sheet(item: $editingItem) { item in
-                EditItemView(item: item, viewModel: viewModel)
-            }
-            .alert("Clear completed items?", isPresented: $showClearCompletedAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear", role: .destructive) {
-                    viewModel.clearCompleted()
+                .toolbar {
+                    toolbarContent
                 }
-            }
-            .alert("Delete all checklist items?", isPresented: $showClearAllAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    viewModel.clearAll()
+                .sheet(isPresented: $showSettings) {
+                    SettingsView(viewModel: viewModel)
                 }
-            }
+                .sheet(item: $editingItem) { item in
+                    EditItemView(item: item, viewModel: viewModel)
+                }
+                .alert("Clear completed items?", isPresented: $showClearCompletedAlert) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Clear", role: .destructive) {
+                        viewModel.clearCompleted()
+                    }
+                }
+                .alert("Delete all checklist items?", isPresented: $showClearAllAlert) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Delete", role: .destructive) {
+                        viewModel.clearAll()
+                    }
+                }
+                .onAppear {
+                    if viewModel.debouncedSearchText != viewModel.searchText {
+                        viewModel.updateSearchText(viewModel.searchText)
+                    }
+                }
         }
     }
     
+    private var contentView: some View {
+        ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    dismissKeyboard()
+                }
+                .ignoresSafeArea()
+            
+            mainContent
+        }
+    }
+    
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        #if os(iOS) || os(visionOS)
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .foregroundColor(.primary.opacity(0.7))
+            }
+            .accessibilityLabel("Settings")
+            .frame(minWidth: 44, minHeight: 44)
+        }
+        
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Menu {
+                if viewModel.hasCompletedItems {
+                    Button(role: .destructive, action: {
+                        showClearCompletedAlert = true
+                    }) {
+                        Label("Clear Completed", systemImage: "checkmark.circle")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .foregroundColor(.primary.opacity(0.7))
+            }
+            .accessibilityLabel("More options")
+            .frame(minWidth: 44, minHeight: 44)
+        }
+        #elseif os(macOS)
+        ToolbarItem(placement: .automatic) {
+            HStack {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .foregroundColor(.primary.opacity(0.7))
+                }
+                .accessibilityLabel("Settings")
+                
+                Menu {
+                    if viewModel.hasCompletedItems {
+                        Button(role: .destructive, action: {
+                            showClearCompletedAlert = true
+                        }) {
+                            Label("Clear Completed", systemImage: "checkmark.circle")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(.primary.opacity(0.7))
+                }
+                .accessibilityLabel("More options")
+            }
+        }
+        #endif
+    }
+    
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Search bar
+            if !viewModel.items.isEmpty {
+                SearchBarView(viewModel: viewModel)
+            }
+            
+            // Category and Status Filters
+            if !viewModel.items.isEmpty {
+                FilterSectionView(viewModel: viewModel)
+            }
+            
+            // Input section
+            InputSectionView(
+                viewModel: viewModel,
+                inputText: $inputText,
+                isButtonDisabled: $isButtonDisabled,
+                isTextFieldFocused: Binding(
+                    get: { isTextFieldFocused },
+                    set: { isTextFieldFocused = $0 }
+                ),
+                selectedCategoryForNewItem: $selectedCategoryForNewItem,
+                onAddItem: addItem,
+                onMultiLinePaste: handleMultiLinePaste
+            )
+            
+            // Item counter and sort
+            CounterSectionView(viewModel: viewModel) {
+                #if os(iOS)
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                #endif
+                showClearAllAlert = true
+            }
+            
+            // List section
+            if viewModel.filteredAndSortedItems.isEmpty {
+                EmptyStateView(viewModel: viewModel)
+            } else {
+                ListSectionView(
+                    viewModel: viewModel,
+                    onEditItem: { item in
+                        editingItem = item
+                    },
+                    onDeleteItems: deleteItems,
+                    onDismissKeyboard: dismissKeyboard
+                )
+            }
+        }
+    }
     
     private func deleteItems(at offsets: IndexSet) {
         #if os(iOS)
@@ -199,6 +209,7 @@ struct ContentView: View {
             isTextFieldFocused = true
         }
     }
+    
     
     private func handleMultiLinePaste(_ items: [String]) {
         guard !items.isEmpty else { return }
@@ -234,129 +245,186 @@ struct ChecklistItemRow: View {
     let onEdit: () -> Void
     let onArchive: () -> Void
     @State private var showNotes = false
+    @State private var isHovered = false
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    // Checkbox
-                    Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(item.isChecked ? .successGreen : .secondaryGray)
-                        .font(.title3)
-                        .symbolEffect(.bounce, value: item.isChecked)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: item.isChecked)
-                        .accessibilityLabel(item.isChecked ? "Completed" : "Not completed")
+            HStack(alignment: .top, spacing: 14) {
+                // Checkbox
+                ZStack {
+                    Circle()
+                        .fill(item.isChecked ? Color.successGreen : Color.clear)
+                        .frame(width: 26, height: 26)
+                        .overlay(
+                            Circle()
+                                .stroke(item.isChecked ? Color.successGreen : Color.secondaryGray.opacity(0.4), lineWidth: 2)
+                        )
                     
-                    // Main content
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .top, spacing: 6) {
-                            Text(item.text)
-                                .font(.system(size: 17))
-                                .foregroundColor(item.isChecked ? .secondaryGray : (item.status == .archived ? .secondaryGray : .primary))
-                                .strikethrough(item.isChecked, color: .secondaryGray)
-                                .multilineTextAlignment(.leading)
-                            
-                            Spacer()
-                            
-                            // Priority indicator
-                            if item.priority != .none {
-                                Image(systemName: item.priority.icon)
-                                    .foregroundColor(item.priority.color)
-                                    .font(.caption)
-                                    .accessibilityLabel("Priority: \(item.priority.rawValue)")
-                            }
-                            
-                            // Edit button
-                            Button(action: onEdit) {
-                                Image(systemName: "pencil")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Edit item")
-                        }
-                        
-                        // Metadata row
-                        HStack(spacing: 8) {
-                            // Category badge
-                            HStack(spacing: 4) {
-                                Image(systemName: "folder.fill")
-                                    .font(.caption2)
-                                Text(category.name)
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.systemGray6)
-                            .cornerRadius(4)
-                            
-                            // Status indicators
-                            if item.status == .archived {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "archivebox.fill")
-                                        .font(.caption2)
-                                    Text("Archived")
-                                        .font(.caption)
-                                }
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.systemGray6)
-                                .cornerRadius(4)
-                            }
-                            
-                            // Due date
-                            if let dueDate = item.dueDate {
-                                HStack(spacing: 4) {
-                                    Image(systemName: item.isOverdue ? "exclamationmark.triangle.fill" : "calendar")
-                                        .font(.caption2)
-                                    Text(dueDate, style: .date)
-                                        .font(.caption)
-                                }
-                                .foregroundColor(item.isOverdue ? .red : .secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(item.isOverdue ? Color.red.opacity(0.1) : Color.systemGray6)
-                                .cornerRadius(4)
-                            }
-                            
-                            Spacer()
-                        }
+                    if item.isChecked {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
                     }
                 }
+                .symbolEffect(.bounce, value: item.isChecked)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: item.isChecked)
+                .accessibilityLabel(item.isChecked ? "Completed" : "Not completed")
+                .padding(.top, 2)
                 
-                // Notes section
-                if !item.notes.isEmpty {
-                    Button(action: { 
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            showNotes.toggle()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: showNotes ? "chevron.down" : "chevron.right")
-                                .font(.caption2)
+                // Main content
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.text)
+                                .font(.system(size: 16, weight: item.isChecked ? .regular : .medium))
+                                .foregroundColor(item.isChecked ? .secondary : (item.status == .archived ? .secondary : .primary))
+                                .strikethrough(item.isChecked, color: .secondary)
+                                .multilineTextAlignment(.leading)
+                                .lineSpacing(2)
+                            
+                            // Metadata row
+                            HStack(spacing: 6) {
+                                // Category badge
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color(hex: category.color) ?? .blue)
+                                        .frame(width: 6, height: 6)
+                                    
+                                    Text(category.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                }
                                 .foregroundColor(.secondary)
-                            Text("Notes")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.systemGray6)
+                                )
+                                
+                                // Priority indicator
+                                if item.priority != .none {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: item.priority.icon)
+                                            .font(.system(size: 10, weight: .medium))
+                                        Text(item.priority.rawValue)
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .foregroundColor(item.priority.color)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(item.priority.color.opacity(0.15))
+                                    )
+                                }
+                                
+                                // Status indicators
+                                if item.status == .archived {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "archivebox.fill")
+                                            .font(.system(size: 10, weight: .medium))
+                                        Text("Archived")
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.systemGray6)
+                                    )
+                                }
+                                
+                                // Due date
+                                if let dueDate = item.dueDate {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: item.isOverdue ? "exclamationmark.triangle.fill" : "calendar")
+                                            .font(.system(size: 10, weight: .medium))
+                                        Text(dueDate, style: .date)
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .foregroundColor(item.isOverdue ? .red : .secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(item.isOverdue ? Color.red.opacity(0.15) : Color.systemGray6)
+                                    )
+                                }
+                                
+                                Spacer()
+                            }
                         }
+                        
+                        Spacer()
+                        
+                        // Edit button
+                        Button(action: onEdit) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(isHovered ? .primaryAccent : .secondary)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle()
+                                        .fill(isHovered ? Color.primaryAccent.opacity(0.1) : Color.clear)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit item")
+                        .opacity(isHovered ? 1 : 0.6)
                     }
-                    .buttonStyle(.plain)
                     
-                    if showNotes {
-                        Text(item.notes)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 20)
-                            .padding(.vertical, 4)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    // Notes section
+                    if !item.notes.isEmpty {
+                        Button(action: { 
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showNotes.toggle()
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: showNotes ? "chevron.down" : "chevron.right")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                
+                                Text("Notes")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                            }
+                            .padding(.top, 4)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        if showNotes {
+                            Text(item.notes)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 16)
+                                .padding(.vertical, 8)
+                                .padding(.trailing, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.systemGray6.opacity(0.5))
+                                )
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 4)
             .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isHovered ? Color.systemGray6.opacity(0.3) : Color.clear)
+            )
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHovered = hovering
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

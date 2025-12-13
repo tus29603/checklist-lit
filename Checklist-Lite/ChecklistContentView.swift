@@ -10,37 +10,55 @@ import SwiftUI
 // MARK: - Search Bar View
 struct SearchBarView: View {
     @ObservedObject var viewModel: ChecklistViewModel
+    @FocusState private var isSearchFocused: Bool
     
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
+                .font(.system(size: 15, weight: .medium))
+            
             TextField("Search items...", text: Binding(
                 get: { viewModel.searchText },
                 set: { viewModel.updateSearchText($0) }
             ))
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
+                .focused($isSearchFocused)
                 #if os(iOS) || os(visionOS)
                 .textInputAutocapitalization(.never)
                 #endif
             
             if !viewModel.searchText.isEmpty {
                 Button {
-                    viewModel.updateSearchText("")
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        viewModel.updateSearchText("")
+                    }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
+                        .font(.system(size: 16))
                 }
+                .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.systemGray6)
-        .cornerRadius(10)
-        .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.systemGray6)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSearchFocused ? Color.primaryAccent.opacity(0.3) : Color.clear, lineWidth: 1.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
         .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.searchText.isEmpty)
     }
 }
 
@@ -50,29 +68,55 @@ struct FilterSectionView: View {
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 // Category filter
                 Menu {
-                    Button("All Categories") {
-                        viewModel.selectedCategoryId = nil
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            viewModel.selectedCategoryId = nil
+                        }
+                    } label: {
+                        Label("All Categories", systemImage: viewModel.selectedCategoryId == nil ? "checkmark" : "")
                     }
+                    
+                    Divider()
+                    
                     ForEach(viewModel.categoryManager.categories) { category in
-                        Button(category.name) {
-                            viewModel.selectedCategoryId = category.id
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                viewModel.selectedCategoryId = category.id
+                            }
+                        } label: {
+                            Label(category.name, systemImage: viewModel.selectedCategoryId == category.id ? "checkmark" : "")
                         }
                     }
                 } label: {
-                    HStack {
+                    HStack(spacing: 6) {
+                        if let categoryId = viewModel.selectedCategoryId,
+                           let category = viewModel.categoryManager.categories.first(where: { $0.id == categoryId }) {
+                            Circle()
+                                .fill(Color(hex: category.color) ?? .blue)
+                                .frame(width: 8, height: 8)
+                        } else {
+                            Image(systemName: "folder.fill")
+                                .font(.system(size: 11))
+                        }
+                        
                         Text(viewModel.selectedCategoryId == nil ? "All Categories" : viewModel.categoryManager.category(for: viewModel.selectedCategoryId ?? UUID()).name)
+                            .font(.system(size: 13, weight: .medium))
+                        
                         Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
                     }
-                    .font(.subheadline)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.primaryAccent.opacity(0.1))
-                    .foregroundColor(.primaryAccent)
-                    .cornerRadius(8)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(viewModel.selectedCategoryId == nil ? Color.primaryAccent.opacity(0.1) : Color.systemGray6)
+                    )
+                    .foregroundColor(viewModel.selectedCategoryId == nil ? .primaryAccent : .primary)
                 }
+                .buttonStyle(.plain)
                 
                 // Status filter
                 Picker("Status", selection: $viewModel.statusFilter) {
@@ -81,11 +125,11 @@ struct FilterSectionView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 200)
+                .frame(width: 220)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
     }
 }
 
@@ -100,11 +144,11 @@ struct InputSectionView: View {
     var onMultiLinePaste: ([String]) -> Void
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack(spacing: 12) {
                 MultiLineTextField(
                     text: $inputText,
-                    placeholder: "New item",
+                    placeholder: "What needs to be done?",
                     onPaste: onMultiLinePaste,
                     onTextChange: { newValue in
                         let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,14 +156,17 @@ struct InputSectionView: View {
                     },
                     isFocused: isTextFieldFocused
                 )
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
-                .frame(minHeight: 44)
-                .background(Color.systemGroupedBackground)
-                .cornerRadius(10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(minHeight: 50)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.systemGroupedBackground)
+                        .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 1)
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.systemGray4, lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(isTextFieldFocused.wrappedValue ? Color.primaryAccent.opacity(0.4) : Color.systemGray4.opacity(0.5), lineWidth: isTextFieldFocused.wrappedValue ? 2 : 1)
                 )
                 .accessibilityLabel("New item text field")
                 .accessibilityHint("Enter the text for your new checklist item or paste multiple items")
@@ -128,63 +175,106 @@ struct InputSectionView: View {
                 }
                 
                 Button(action: onAddItem) {
-                    Text("Add")
-                        .font(.body)
-                        .fontWeight(.semibold)
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24, weight: .medium))
                         .foregroundColor(.white)
-                        .frame(minHeight: 44)
-                        .padding(.horizontal, 20)
-                        .background(isButtonDisabled ? Color.secondaryGray : Color.primaryAccent)
-                        .cornerRadius(11)
+                        .frame(width: 50, height: 50)
+                        .background(
+                            Circle()
+                                .fill(isButtonDisabled ? Color.secondaryGray : Color.primaryAccent)
+                                .shadow(color: isButtonDisabled ? .clear : Color.primaryAccent.opacity(0.3), radius: 4, x: 0, y: 2)
+                        )
                 }
                 .disabled(isButtonDisabled)
+                .buttonStyle(.plain)
+                .scaleEffect(isButtonDisabled ? 0.95 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isButtonDisabled)
                 .accessibilityLabel("Add item")
                 .accessibilityHint("Adds the new item to your checklist")
             }
             
             // Category and Priority selection for new item
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Menu {
                     ForEach(viewModel.categoryManager.categories) { category in
-                        Button(category.name) {
-                            selectedCategoryForNewItem = category.id
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedCategoryForNewItem = category.id
+                            }
+                        } label: {
+                            Label(category.name, systemImage: selectedCategoryForNewItem == category.id ? "checkmark" : "")
                         }
                     }
                 } label: {
-                    HStack {
-                        Image(systemName: "folder")
+                    HStack(spacing: 6) {
+                        if let categoryId = selectedCategoryForNewItem,
+                           let category = viewModel.categoryManager.categories.first(where: { $0.id == categoryId }) {
+                            Circle()
+                                .fill(Color(hex: category.color) ?? .blue)
+                                .frame(width: 8, height: 8)
+                        } else {
+                            Image(systemName: "folder.fill")
+                                .font(.system(size: 11))
+                        }
+                        
                         Text(selectedCategoryForNewItem == nil ? "General" : viewModel.categoryManager.category(for: selectedCategoryForNewItem ?? UUID()).name)
+                            .font(.system(size: 12, weight: .medium))
+                        
                         Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
                     }
-                    .font(.caption)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.systemGray6)
+                    )
                 }
+                .buttonStyle(.plain)
                 
                 Menu {
                     ForEach(Priority.allCases, id: \.self) { priority in
                         Button {
-                            viewModel.selectedPriority = priority
-                        } label: {
-                            HStack {
-                                Image(systemName: priority.icon)
-                                Text(priority.rawValue)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                viewModel.selectedPriority = priority
                             }
+                        } label: {
+                            Label(priority.rawValue, systemImage: priority.icon)
                         }
                     }
                 } label: {
-                    HStack {
+                    HStack(spacing: 6) {
                         Image(systemName: viewModel.selectedPriority.icon)
+                            .font(.system(size: 11))
+                            .foregroundColor(viewModel.selectedPriority != .none ? viewModel.selectedPriority.color : .secondary)
+                        
                         Text(viewModel.selectedPriority.rawValue)
+                            .font(.system(size: 12, weight: .medium))
+                        
                         Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
                     }
-                    .font(.caption)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.systemGray6)
+                    )
                 }
+                .buttonStyle(.plain)
                 
                 Spacer()
             }
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: -2)
+        )
     }
 }
 
@@ -194,12 +284,18 @@ struct CounterSectionView: View {
     var onClearAll: () -> Void
     
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 10) {
             HStack {
-                Text("\(viewModel.completedCount) of \(viewModel.totalCount) completed")
-                    .font(.caption)
-                    .foregroundColor(.secondaryGray)
-                    .contentTransition(.numericText())
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.successGreen)
+                    
+                    Text("\(viewModel.completedCount) of \(viewModel.totalCount) completed")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .contentTransition(.numericText())
+                }
                 
                 Spacer()
                 
@@ -207,27 +303,46 @@ struct CounterSectionView: View {
                 if !viewModel.items.isEmpty {
                     Menu {
                         ForEach(SortOption.allCases, id: \.self) { option in
-                            Button(option.rawValue) {
-                                viewModel.sortOption = option
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    viewModel.sortOption = option
+                                }
+                            } label: {
+                                Label(option.rawValue, systemImage: viewModel.sortOption == option ? "checkmark" : "")
                             }
                         }
                     } label: {
-                        HStack {
+                        HStack(spacing: 5) {
                             Image(systemName: "arrow.up.arrow.down")
+                                .font(.system(size: 11, weight: .medium))
                             Text(viewModel.sortOption.rawValue)
+                                .font(.system(size: 12, weight: .medium))
                         }
-                        .font(.caption)
-                        .foregroundColor(.secondaryGray)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.systemGray6)
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 // Clear All button
                 if viewModel.totalCount > 0 {
                     Button(action: onClearAll) {
                         Text("Clear All")
-                            .font(.caption)
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.red.opacity(0.1))
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
             
@@ -235,26 +350,36 @@ struct CounterSectionView: View {
             if viewModel.totalCount > 0 {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 1)
+                        Capsule()
                             .fill(Color.systemGray5)
-                            .frame(height: 2)
+                            .frame(height: 4)
                         
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(Color.primaryAccent)
-                            .frame(
-                                width: geometry.size.width * CGFloat(viewModel.completedCount) / CGFloat(viewModel.totalCount),
-                                height: 2
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.primaryAccent, Color.primaryAccent.opacity(0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                            .animation(.easeInOut(duration: 0.2), value: viewModel.completedCount)
+                            .frame(
+                                width: max(4, geometry.size.width * CGFloat(viewModel.completedCount) / CGFloat(viewModel.totalCount)),
+                                height: 4
+                            )
+                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.completedCount)
                     }
                 }
-                .frame(height: 2)
+                .frame(height: 4)
             }
         }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.completedCount)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.totalCount)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.completedCount)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.totalCount)
     }
 }
 
@@ -263,29 +388,40 @@ struct EmptyStateView: View {
     @ObservedObject var viewModel: ChecklistViewModel
     
     var body: some View {
-        Spacer()
-        VStack(spacing: 16) {
-            Image(systemName: viewModel.debouncedSearchText.isEmpty ? "checklist" : "magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.secondaryGray.opacity(0.4))
-                .symbolEffect(.pulse, options: .repeating)
+        VStack(spacing: 24) {
+            Spacer()
             
-            VStack(spacing: 6) {
-                Text(viewModel.debouncedSearchText.isEmpty ? "No items yet" : "No items found")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .fill(Color.primaryAccent.opacity(0.1))
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: viewModel.debouncedSearchText.isEmpty ? "checklist" : "magnifyingglass")
+                        .font(.system(size: 50, weight: .light))
+                        .foregroundColor(.primaryAccent.opacity(0.6))
+                        .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                }
                 
-                Text(viewModel.debouncedSearchText.isEmpty ? 
-                     "Add your first task above" :
-                     "Try adjusting your search or filters")
-                    .font(.subheadline)
-                    .foregroundColor(.secondaryGray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                VStack(spacing: 8) {
+                    Text(viewModel.debouncedSearchText.isEmpty ? "No items yet" : "No items found")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Text(viewModel.debouncedSearchText.isEmpty ? 
+                         "Start by adding your first task above" :
+                         "Try adjusting your search or filters")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 50)
+                        .lineSpacing(4)
+                }
             }
+            
+            Spacer()
         }
-        .padding()
-        Spacer()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -360,8 +496,13 @@ struct ListSectionView: View {
                         .tint(.green)
                     }
                 }
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowSeparator(.hidden)
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.clear)
+                        .padding(.horizontal, 4)
+                )
                 .transition(.asymmetric(
                     insertion: .move(edge: .leading).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)
