@@ -204,12 +204,11 @@ struct ContentView: View {
         inputText = ""
         isButtonDisabled = true
         
-        // Small delay to ensure keyboard stays open
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // Auto-focus input after adding for quick entry
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             isTextFieldFocused = true
         }
     }
-    
     
     private func handleMultiLinePaste(_ items: [String]) {
         guard !items.isEmpty else { return }
@@ -244,13 +243,22 @@ struct ChecklistItemRow: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onArchive: () -> Void
+    var onUpdate: ((ChecklistItem) -> Void)?
     @State private var showNotes = false
     @State private var isHovered = false
+    @State private var isEditing = false
+    @State private var editedText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .top, spacing: 14) {
-                // Checkbox
+        HStack(alignment: .top, spacing: 14) {
+            // Checkbox - separate button with larger tap area
+            Button(action: {
+                #if os(iOS)
+                UISelectionFeedbackGenerator().selectionChanged()
+                #endif
+                onTap()
+            }) {
                 ZStack {
                     Circle()
                         .fill(item.isChecked ? Color.successGreen : Color.clear)
@@ -269,36 +277,95 @@ struct ChecklistItemRow: View {
                 .symbolEffect(.bounce, value: item.isChecked)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: item.isChecked)
                 .accessibilityLabel(item.isChecked ? "Completed" : "Not completed")
-                .padding(.top, 2)
-                
-                // Main content
-                VStack(alignment: .leading, spacing: 8) {
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .padding(.top, 2)
+            
+            // Main content area
+            VStack(alignment: .leading, spacing: 8) {
+                if isEditing {
+                    // Inline editing mode
+                    HStack(spacing: 8) {
+                        TextField("Task", text: $editedText, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 17, weight: .medium, design: .rounded))
+                            .focused($isTextFieldFocused)
+                            .lineLimit(1...5)
+                            .onSubmit {
+                                saveEdit()
+                            }
+                            .onAppear {
+                                editedText = item.text
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTextFieldFocused = true
+                                }
+                            }
+                        
+                        Button {
+                            saveEdit()
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.successGreen)
+                                .font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            cancelEdit()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 4)
+                    .transition(.opacity.combined(with: .scale))
+                } else {
+                    // Display mode - tap text to edit inline
                     HStack(alignment: .top, spacing: 8) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(item.text)
-                                .font(.system(size: 16, weight: item.isChecked ? .regular : .medium))
-                                .foregroundColor(item.isChecked ? .secondary : (item.status == .archived ? .secondary : .primary))
-                                .strikethrough(item.isChecked, color: .secondary)
-                                .multilineTextAlignment(.leading)
-                                .lineSpacing(2)
+                            Button(action: {
+                                #if os(iOS)
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                #endif
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    isEditing = true
+                                }
+                            }) {
+                                Text(item.text)
+                                    .font(.system(size: 17, weight: item.isChecked ? .regular : .medium, design: .rounded))
+                                    .foregroundColor(item.isChecked ? .secondary : (item.status == .archived ? .secondary : .primary))
+                                    .strikethrough(item.isChecked, color: .secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .lineSpacing(3)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
                             
                             // Metadata row
                             HStack(spacing: 6) {
                                 // Category badge
-                                HStack(spacing: 4) {
+                                HStack(spacing: 5) {
                                     Circle()
                                         .fill(Color(hex: category.color) ?? .blue)
-                                        .frame(width: 6, height: 6)
+                                        .frame(width: 7, height: 7)
                                     
                                     Text(category.name)
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
                                 }
                                 .foregroundColor(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
                                 .background(
                                     Capsule()
-                                        .fill(Color.systemGray6)
+                                        .fill(
+                                            (Color(hex: category.color) ?? .blue).opacity(0.12)
+                                        )
+                                        .shadow(color: (Color(hex: category.color) ?? .blue).opacity(0.1), radius: 2, x: 0, y: 1)
                                 )
                                 
                                 // Priority indicator
@@ -307,7 +374,7 @@ struct ChecklistItemRow: View {
                                         Image(systemName: item.priority.icon)
                                             .font(.system(size: 10, weight: .medium))
                                         Text(item.priority.rawValue)
-                                            .font(.system(size: 11, weight: .medium))
+                                            .font(.system(size: 11, weight: .medium, design: .rounded))
                                     }
                                     .foregroundColor(item.priority.color)
                                     .padding(.horizontal, 8)
@@ -324,7 +391,7 @@ struct ChecklistItemRow: View {
                                         Image(systemName: "archivebox.fill")
                                             .font(.system(size: 10, weight: .medium))
                                         Text("Archived")
-                                            .font(.system(size: 11, weight: .medium))
+                                            .font(.system(size: 11, weight: .medium, design: .rounded))
                                     }
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 8)
@@ -341,7 +408,7 @@ struct ChecklistItemRow: View {
                                         Image(systemName: item.isOverdue ? "exclamationmark.triangle.fill" : "calendar")
                                             .font(.system(size: 10, weight: .medium))
                                         Text(dueDate, style: .date)
-                                            .font(.system(size: 11, weight: .medium))
+                                            .font(.system(size: 11, weight: .medium, design: .rounded))
                                     }
                                     .foregroundColor(item.isOverdue ? .red : .secondary)
                                     .padding(.horizontal, 8)
@@ -358,7 +425,7 @@ struct ChecklistItemRow: View {
                         
                         Spacer()
                         
-                        // Edit button
+                        // Edit button (opens full edit sheet)
                         Button(action: onEdit) {
                             Image(systemName: "pencil")
                                 .font(.system(size: 13, weight: .medium))
@@ -370,7 +437,7 @@ struct ChecklistItemRow: View {
                                 )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Edit item")
+                        .accessibilityLabel("Edit item details")
                         .opacity(isHovered ? 1 : 0.6)
                     }
                     
@@ -387,7 +454,7 @@ struct ChecklistItemRow: View {
                                     .foregroundColor(.secondary)
                                 
                                 Text("Notes")
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
                                     .foregroundColor(.secondary)
                                 
                                 Spacer()
@@ -398,7 +465,7 @@ struct ChecklistItemRow: View {
                         
                         if showNotes {
                             Text(item.notes)
-                                .font(.system(size: 13))
+                                .font(.system(size: 13, design: .rounded))
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 16)
                                 .padding(.vertical, 8)
@@ -426,10 +493,36 @@ struct ChecklistItemRow: View {
                 }
             }
         }
-        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(item.isChecked ? "Completed: \(item.text)" : item.text)
-        .accessibilityHint("Double tap to toggle completion")
+        .accessibilityHint("Double tap to toggle completion, tap text to edit")
+    }
+    
+    private func saveEdit() {
+        let trimmed = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            cancelEdit()
+            return
+        }
+        
+        var updatedItem = item
+        updatedItem.text = trimmed
+        onUpdate?(updatedItem)
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isEditing = false
+        }
+        
+        #if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
+    }
+    
+    private func cancelEdit() {
+        editedText = item.text
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isEditing = false
+        }
     }
 }
 

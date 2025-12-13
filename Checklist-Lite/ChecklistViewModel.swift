@@ -105,13 +105,15 @@ class ChecklistViewModel: ObservableObject {
     }
     
     func toggleItem(_ item: ChecklistItem) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                items[index].isChecked.toggle()
-                items[index].status = items[index].isChecked ? .completed : .active
-            }
-            saveItemsAsync()
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            var updatedItem = items[index]
+            updatedItem.isChecked.toggle()
+            updatedItem.status = updatedItem.isChecked ? .completed : .active
+            items[index] = updatedItem
         }
+        saveItemsAsync()
     }
     
     func archiveItem(_ item: ChecklistItem) {

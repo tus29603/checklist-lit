@@ -17,6 +17,7 @@ struct MultiLineTextField: View {
     var onPaste: (([String]) -> Void)?
     var onTextChange: ((String) -> Void)?
     var isFocused: Binding<Bool>
+    var onSubmit: (() -> Void)? = nil
     
     var body: some View {
         #if os(iOS) || os(visionOS)
@@ -25,7 +26,8 @@ struct MultiLineTextField: View {
             placeholder: placeholder,
             onPaste: onPaste,
             onTextChange: onTextChange,
-            isFocused: isFocused
+            isFocused: isFocused,
+            onSubmit: onSubmit
         )
         #elseif os(macOS)
         macOSMultiLineTextField(
@@ -33,7 +35,8 @@ struct MultiLineTextField: View {
             placeholder: placeholder,
             onPaste: onPaste,
             onTextChange: onTextChange,
-            isFocused: isFocused
+            isFocused: isFocused,
+            onSubmit: onSubmit
         )
         #else
         TextField(placeholder, text: $text)
@@ -83,12 +86,13 @@ struct iOSMultiLineTextField: UIViewRepresentable {
     var onPaste: (([String]) -> Void)?
     var onTextChange: ((String) -> Void)?
     var isFocused: Binding<Bool>
+    var onSubmit: (() -> Void)? = nil
     
     func makeUIView(context: Context) -> UITextField {
         let textField = PasteableTextField()
         textField.placeholder = placeholder
         textField.delegate = context.coordinator
-        textField.returnKeyType = .next
+        textField.returnKeyType = .done
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
         textField.onPaste = { pastedText in
@@ -166,7 +170,12 @@ struct iOSMultiLineTextField: UIViewRepresentable {
         }
         
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            textField.resignFirstResponder()
+            // Call onSubmit if provided, otherwise just dismiss keyboard
+            if let onSubmit = parent.onSubmit {
+                onSubmit()
+            } else {
+                textField.resignFirstResponder()
+            }
             return true
         }
     }
@@ -194,6 +203,7 @@ struct macOSMultiLineTextField: NSViewRepresentable {
     var onPaste: (([String]) -> Void)?
     var onTextChange: ((String) -> Void)?
     var isFocused: Binding<Bool>
+    var onSubmit: (() -> Void)? = nil
     
     func makeNSView(context: Context) -> NSTextField {
         let textField = NSTextField()
@@ -290,8 +300,19 @@ struct macOSMultiLineTextField: NSViewRepresentable {
         
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                control.window?.makeFirstResponder(nil)
-                return true
+                // Check if Command+Return (submit) or just Return (new line)
+                let event = NSApp.currentEvent
+                if event?.modifierFlags.contains(.command) == true {
+                    // Command+Return: submit
+                    if let onSubmit = parent.onSubmit {
+                        onSubmit()
+                    }
+                    return true
+                } else {
+                    // Just Return: dismiss keyboard
+                    control.window?.makeFirstResponder(nil)
+                    return true
+                }
             }
             return false
         }

@@ -22,25 +22,72 @@ struct SettingsView: View {
                     Button {
                         showStatistics = true
                     } label: {
-                        Label("Statistics", systemImage: "chart.bar.fill")
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                                .frame(width: 24, height: 24)
+                            
+                            Text("Statistics")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                        .padding(.vertical, 4)
                     }
+                    .buttonStyle(.plain)
                     
                     Button {
                         showExportImport = true
                     } label: {
-                        Label("Export / Import", systemImage: "square.and.arrow.up.on.square")
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.up.on.square")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                                .frame(width: 24, height: 24)
+                            
+                            Text("Export / Import")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                        .padding(.vertical, 4)
                     }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Actions")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
                 
-                Section("Categories") {
+                Section {
                     ForEach(viewModel.categoryManager.categories) { category in
-                        HStack {
-                            // Color indicator
-                            Circle()
-                                .fill(Color(hex: category.color) ?? .blue)
-                                .frame(width: 12, height: 12)
+                        HStack(spacing: 12) {
+                            // Color indicator with shadow
+                            ZStack {
+                                Circle()
+                                    .fill(Color(hex: category.color) ?? .blue)
+                                    .frame(width: 16, height: 16)
+                                    .shadow(color: (Color(hex: category.color) ?? .blue).opacity(0.4), radius: 3, x: 0, y: 1)
+                                
+                                Circle()
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    .frame(width: 16, height: 16)
+                            }
                             
                             Text(category.name)
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
                             
                             Spacer()
                             
@@ -49,11 +96,17 @@ struct SettingsView: View {
                                 editingCategory = category
                             } label: {
                                 Image(systemName: "pencil")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                    .frame(width: 28, height: 28)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.secondary.opacity(0.1))
+                                    )
                             }
                             .buttonStyle(.plain)
                         }
+                        .padding(.vertical, 6)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             editingCategory = category
@@ -72,20 +125,72 @@ struct SettingsView: View {
                     Button {
                         showAddCategory = true
                     } label: {
-                        Label("Add Category", systemImage: "plus.circle")
-                            .foregroundColor(.blue)
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                            
+                            Text("Add Category")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                        }
+                        .padding(.vertical, 8)
                     }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Categories")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                
+                Section {
+                    HStack(spacing: 12) {
+                        Text("Version")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        Text("1.0")
+                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
+                    .padding(.vertical, 4)
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Tagline")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        Text("A simple, focused checklist.")
+                            .font(.system(size: 15, weight: .regular, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("About")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
             }
+            #if os(iOS) || os(visionOS)
+            .listStyle(.insetGrouped)
+            #elseif os(macOS)
             .listStyle(.sidebar)
+            #endif
             .navigationTitle("Settings")
             #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primaryAccent)
                     }
                 }
             }
@@ -128,24 +233,67 @@ struct ExportImportView: View {
                         exportData = ExportImportManager.exportItems(viewModel.items)
                         showShareSheet = true
                     } label: {
-                        Label("Export Checklist", systemImage: "square.and.arrow.up")
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                                .frame(width: 24, height: 24)
+                            
+                            Text("Export Checklist")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
                     }
+                    .buttonStyle(.plain)
                     
                     Button {
                         // Import functionality would go here
                     } label: {
-                        Label("Import Checklist", systemImage: "square.and.arrow.down")
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryAccent)
+                                .frame(width: 24, height: 24)
+                            
+                            Text("Import Checklist")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
                     }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Data Management")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                } footer: {
+                    Text("Export your checklist data as JSON to backup or share with others.")
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
             }
+            #if os(iOS) || os(visionOS)
+            .listStyle(.insetGrouped)
+            #elseif os(macOS)
+            .listStyle(.sidebar)
+            #endif
             .navigationTitle("Export / Import")
             #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primaryAccent)
                     }
                 }
             }
@@ -255,26 +403,37 @@ struct CategoryEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Category Name") {
+                Section {
                     TextField("Category name", text: $categoryName)
+                        .font(.system(size: 16, design: .rounded))
+                } header: {
+                    Text("Category Name")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
                 
-                Section("Color") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 12) {
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 16) {
                         ForEach(predefinedColors, id: \.hex) { colorOption in
                             Button {
-                                categoryColor = colorOption.hex
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    categoryColor = colorOption.hex
+                                }
                             } label: {
                                 ZStack {
                                     Circle()
                                         .fill(Color(hex: colorOption.hex) ?? .blue)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: 44, height: 44)
+                                        .shadow(color: (Color(hex: colorOption.hex) ?? .blue).opacity(0.3), radius: 4, x: 0, y: 2)
                                     
                                     if categoryColor == colorOption.hex {
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 3)
+                                            .frame(width: 44, height: 44)
+                                        
                                         Image(systemName: "checkmark")
                                             .foregroundColor(.white)
-                                            .font(.caption)
-                                            .fontWeight(.bold)
+                                            .font(.system(size: 16, weight: .bold, design: .rounded))
                                     }
                                 }
                             }
@@ -282,6 +441,10 @@ struct CategoryEditView: View {
                         }
                     }
                     .padding(.vertical, 8)
+                } header: {
+                    Text("Color")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle(category == nil ? "New Category" : "Edit Category")
@@ -290,14 +453,22 @@ struct CategoryEditView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 17, design: .rounded))
+                            .foregroundColor(.secondary)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button {
                         saveCategory()
                         dismiss()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primaryAccent)
                     }
                     .disabled(categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }

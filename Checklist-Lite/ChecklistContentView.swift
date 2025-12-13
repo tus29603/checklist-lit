@@ -16,7 +16,7 @@ struct SearchBarView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
             
             TextField("Search items...", text: Binding(
                 get: { viewModel.searchText },
@@ -37,7 +37,7 @@ struct SearchBarView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
-                        .font(.system(size: 16))
+                        .font(.system(size: 16, design: .rounded))
                 }
                 .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
@@ -112,7 +112,14 @@ struct FilterSectionView: View {
                     .padding(.vertical, 8)
                     .background(
                         Capsule()
-                            .fill(viewModel.selectedCategoryId == nil ? Color.primaryAccent.opacity(0.1) : Color.systemGray6)
+                            .fill(
+                                viewModel.selectedCategoryId == nil 
+                                    ? Color.primaryAccent.opacity(0.12) 
+                                    : (viewModel.selectedCategoryId != nil && viewModel.categoryManager.categories.first(where: { $0.id == viewModel.selectedCategoryId }) != nil
+                                        ? Color(hex: viewModel.categoryManager.categories.first(where: { $0.id == viewModel.selectedCategoryId })?.color ?? "#0A84FF")?.opacity(0.1) ?? Color.systemGray6
+                                        : Color.systemGray6)
+                            )
+                            .shadow(color: viewModel.selectedCategoryId == nil ? Color.primaryAccent.opacity(0.2) : .clear, radius: 2, x: 0, y: 1)
                     )
                     .foregroundColor(viewModel.selectedCategoryId == nil ? .primaryAccent : .primary)
                 }
@@ -154,22 +161,27 @@ struct InputSectionView: View {
                         let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                         isButtonDisabled = trimmed.isEmpty
                     },
-                    isFocused: isTextFieldFocused
+                    isFocused: isTextFieldFocused,
+                    onSubmit: {
+                        if !isButtonDisabled {
+                            onAddItem()
+                        }
+                    }
                 )
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(minHeight: 50)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.systemGroupedBackground)
-                        .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 1)
+                        .fill(Color.inputAreaBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(isTextFieldFocused.wrappedValue ? Color.primaryAccent.opacity(0.4) : Color.systemGray4.opacity(0.5), lineWidth: isTextFieldFocused.wrappedValue ? 2 : 1)
                 )
                 .accessibilityLabel("New item text field")
-                .accessibilityHint("Enter the text for your new checklist item or paste multiple items")
+                .accessibilityHint("Enter the text for your new checklist item or paste multiple items. Press Return to add.")
                 .onTapGesture {
                     isTextFieldFocused.wrappedValue = true
                 }
@@ -246,7 +258,7 @@ struct InputSectionView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: viewModel.selectedPriority.icon)
-                            .font(.system(size: 11))
+                            .font(.system(size: 11, design: .rounded))
                             .foregroundColor(viewModel.selectedPriority != .none ? viewModel.selectedPriority.color : .secondary)
                         
                         Text(viewModel.selectedPriority.rawValue)
@@ -269,11 +281,18 @@ struct InputSectionView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 16)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: -2)
+                .fill(Color.inputAreaBackground)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: -2)
+        )
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundColor(Color.systemGray4.opacity(0.3))
+                .offset(y: -0.25),
+            alignment: .bottom
         )
     }
 }
@@ -288,12 +307,12 @@ struct CounterSectionView: View {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(.successGreen)
                     
                     Text("\(viewModel.completedCount) of \(viewModel.totalCount) completed")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.8))
                         .contentTransition(.numericText())
                 }
                 
@@ -314,11 +333,11 @@ struct CounterSectionView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
                             Text(viewModel.sortOption.rawValue)
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.secondary.opacity(0.8))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
@@ -333,7 +352,7 @@ struct CounterSectionView: View {
                 if viewModel.totalCount > 0 {
                     Button(action: onClearAll) {
                         Text("Clear All")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(.red)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -386,42 +405,56 @@ struct CounterSectionView: View {
 // MARK: - Empty State View
 struct EmptyStateView: View {
     @ObservedObject var viewModel: ChecklistViewModel
+    @State private var isVisible = false
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 28) {
             Spacer()
             
-            VStack(spacing: 20) {
+            VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(Color.primaryAccent.opacity(0.1))
-                        .frame(width: 100, height: 100)
+                        .fill(Color.primaryAccent.opacity(0.08))
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(isVisible ? 1.0 : 0.8)
+                        .opacity(isVisible ? 1.0 : 0.0)
                     
                     Image(systemName: viewModel.debouncedSearchText.isEmpty ? "checklist" : "magnifyingglass")
-                        .font(.system(size: 50, weight: .light))
-                        .foregroundColor(.primaryAccent.opacity(0.6))
-                        .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                        .font(.system(size: 56, weight: .ultraLight, design: .rounded))
+                        .foregroundColor(.primaryAccent.opacity(0.5))
+                        .symbolEffect(.pulse, options: .repeating.speed(0.6))
+                        .scaleEffect(isVisible ? 1.0 : 0.7)
+                        .opacity(isVisible ? 1.0 : 0.0)
                 }
                 
-                VStack(spacing: 8) {
-                    Text(viewModel.debouncedSearchText.isEmpty ? "No items yet" : "No items found")
-                        .font(.system(size: 22, weight: .semibold))
+                VStack(spacing: 10) {
+                    Text(viewModel.debouncedSearchText.isEmpty ? "Your list is empty" : "No items found")
+                        .font(.system(size: 24, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
+                        .opacity(isVisible ? 1.0 : 0.0)
+                        .offset(y: isVisible ? 0 : 10)
                     
                     Text(viewModel.debouncedSearchText.isEmpty ? 
-                         "Start by adding your first task above" :
+                         "Add your first task to get started" :
                          "Try adjusting your search or filters")
-                        .font(.system(size: 15))
+                        .font(.system(size: 16, weight: .regular, design: .rounded))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 50)
-                        .lineSpacing(4)
+                        .lineSpacing(5)
+                        .opacity(isVisible ? 1.0 : 0.0)
+                        .offset(y: isVisible ? 0 : 10)
                 }
             }
             
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+                isVisible = true
+            }
+        }
     }
 }
 
@@ -455,6 +488,9 @@ struct ListSectionView: View {
                         } else {
                             viewModel.archiveItem(item)
                         }
+                    },
+                    onUpdate: { updatedItem in
+                        viewModel.updateItem(updatedItem)
                     }
                 )
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -482,27 +518,40 @@ struct ListSectionView: View {
                     
                     if item.status != .archived {
                         Button {
+                            #if os(iOS)
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            #endif
                             viewModel.archiveItem(item)
                         } label: {
-                            Label("Archive", systemImage: "archivebox")
+                            Label("Archive", systemImage: "archivebox.fill")
                         }
                         .tint(.blue)
                     } else {
                         Button {
+                            #if os(iOS)
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            #endif
                             viewModel.unarchiveItem(item)
                         } label: {
-                            Label("Unarchive", systemImage: "tray.and.arrow.up")
+                            Label("Unarchive", systemImage: "tray.and.arrow.up.fill")
                         }
                         .tint(.green)
                     }
                 }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        #if os(iOS)
+                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                        #endif
+                        viewModel.deleteItem(item)
+                    } label: {
+                        Label("Delete", systemImage: "trash.fill")
+                    }
+                    .tint(.red)
+                }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowSeparator(.hidden)
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.clear)
-                        .padding(.horizontal, 4)
-                )
+                .listRowBackground(Color.clear)
                 .transition(.asymmetric(
                     insertion: .move(edge: .leading).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)

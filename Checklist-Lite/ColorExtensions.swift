@@ -19,6 +19,7 @@ extension Color {
     static let successGreen = Color(red: 0.20, green: 0.78, blue: 0.35) // #34C759
     static let secondaryGray = Color(red: 0.56, green: 0.56, blue: 0.58) // #8E8E93
     static let systemGroupedBackground = Color(red: 0.95, green: 0.95, blue: 0.97) // #F2F2F7
+    static let inputAreaBackground = Color(red: 0.98, green: 0.98, blue: 0.99) // Slightly darker for hierarchy
     
     // Platform-specific system colors
     #if os(iOS) || os(visionOS)
