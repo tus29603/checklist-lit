@@ -1,5 +1,5 @@
 //
-//  Checklist_LiteApp.swift
+//  ChecklistLiteApp.swift
 //  Checklist-Lite
 //
 //  Created by Tesfaldet Haileab on 12/12/25.
@@ -8,10 +8,11 @@
 import SwiftUI
 
 @main
-struct Checklist_LiteApp: App {
+struct ChecklistLiteApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
 }
+
