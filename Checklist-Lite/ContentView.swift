@@ -7,522 +7,235 @@
 
 import SwiftUI
 
+#if os(iOS) || os(visionOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+
+extension Color {
+    static var systemBackgroundColor: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(.systemBackground)
+        #elseif os(macOS)
+        return Color(NSColor.textBackgroundColor)
+        #else
+        return Color.white
+        #endif
+    }
+    
+    static var systemGroupedBackgroundColor: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(.systemGroupedBackground)
+        #elseif os(macOS)
+        return Color(NSColor.controlBackgroundColor)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
+    }
+}
+
 struct ContentView: View {
     @StateObject private var viewModel = ChecklistViewModel()
+    @State private var newItemText: String = ""
     @FocusState private var isTextFieldFocused: Bool
-    @State private var showClearCompletedAlert = false
-    @State private var showClearAllAlert = false
-    @State private var showSettings = false
-    @State private var editingItem: ChecklistItem?
-    @State private var selectedCategoryForNewItem: UUID?
-    
-    // Move input text to view level to avoid ViewModel updates on every keystroke
-    @State private var inputText: String = ""
-    @State private var isButtonDisabled: Bool = true
     
     var body: some View {
         NavigationStack {
-            contentView
-                .navigationTitle("Checklist")
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.large)
-                #endif
-                .toolbar {
-                    toolbarContent
-                }
-                .sheet(isPresented: $showSettings) {
-                    SettingsView(viewModel: viewModel)
-                }
-                .sheet(item: $editingItem) { item in
-                    EditItemView(item: item, viewModel: viewModel)
-                }
-                .alert("Clear completed items?", isPresented: $showClearCompletedAlert) {
-                    Button("Cancel", role: .cancel) { }
-                    Button("Clear", role: .destructive) {
-                        viewModel.clearCompleted()
-                    }
-                }
-                .alert("Delete all checklist items?", isPresented: $showClearAllAlert) {
-                    Button("Cancel", role: .cancel) { }
-                    Button("Delete", role: .destructive) {
-                        viewModel.clearAll()
-                    }
-                }
-                .onAppear {
-                    if viewModel.debouncedSearchText != viewModel.searchText {
-                        viewModel.updateSearchText(viewModel.searchText)
-                    }
-                }
-        }
-    }
-    
-    private var contentView: some View {
-        ZStack {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    dismissKeyboard()
-                }
-                .ignoresSafeArea()
-            
-            mainContent
-        }
-    }
-    
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        #if os(iOS) || os(visionOS)
-        ToolbarItem(placement: .navigationBarLeading) {
-            Button {
-                showSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .foregroundColor(.primary.opacity(0.7))
-            }
-            .accessibilityLabel("Settings")
-            .frame(minWidth: 44, minHeight: 44)
-        }
-        
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Menu {
-                if viewModel.hasCompletedItems {
-                    Button(role: .destructive, action: {
-                        showClearCompletedAlert = true
-                    }) {
-                        Label("Clear Completed", systemImage: "checkmark.circle")
-                    }
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .foregroundColor(.primary.opacity(0.7))
-            }
-            .accessibilityLabel("More options")
-            .frame(minWidth: 44, minHeight: 44)
-        }
-        #elseif os(macOS)
-        ToolbarItem(placement: .automatic) {
-            HStack {
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .foregroundColor(.primary.opacity(0.7))
-                }
-                .accessibilityLabel("Settings")
+            ZStack {
+                // Background
+                Color.systemGroupedBackgroundColor
+                    .ignoresSafeArea()
                 
-                Menu {
-                    if viewModel.hasCompletedItems {
-                        Button(role: .destructive, action: {
-                            showClearCompletedAlert = true
-                        }) {
-                            Label("Clear Completed", systemImage: "checkmark.circle")
+                VStack(spacing: 0) {
+                    // Input section
+                    VStack(spacing: 16) {
+                        HStack(spacing: 12) {
+                            TextField("What needs to be done?", text: $newItemText)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 17, weight: .regular, design: .rounded))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color.systemBackgroundColor)
+                                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(
+                                            isTextFieldFocused ? Color.blue.opacity(0.4) : Color.clear,
+                                            lineWidth: 2
+                                        )
+                                )
+                                .focused($isTextFieldFocused)
+                                .onSubmit {
+                                    addItem()
+                                }
+                            
+                            Button(action: addItem) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 44, weight: .medium))
+                                    .foregroundColor(newItemText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray.opacity(0.3) : .blue)
+                                    .shadow(
+                                        color: newItemText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                        ? .clear
+                                        : Color.blue.opacity(0.3),
+                                        radius: 8,
+                                        x: 0,
+                                        y: 4
+                                    )
+                            }
+                            .disabled(newItemText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .buttonStyle(.plain)
+                            .scaleEffect(newItemText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.95 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newItemText.isEmpty)
                         }
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundColor(.primary.opacity(0.7))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 20)
+                    .background(
+                        Rectangle()
+                            .fill(Color.systemBackgroundColor)
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    )
+                    
+                    // List of items
+                    if viewModel.items.isEmpty {
+                        Spacer()
+                        VStack(spacing: 24) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.blue.opacity(0.1))
+                                    .frame(width: 120, height: 120)
+                                
+                                Image(systemName: "checklist")
+                                    .font(.system(size: 56, weight: .ultraLight, design: .rounded))
+                                    .foregroundColor(.blue.opacity(0.6))
+                            }
+                            
+                            VStack(spacing: 8) {
+                                Text("Your list is empty")
+                                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Add your first task to get started")
+                                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .transition(.opacity.combined(with: .scale))
+                        Spacer()
+                    } else {
+                        List {
+                            ForEach(viewModel.items) { item in
+                                ChecklistItemRow(item: item) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        viewModel.toggleItem(item)
+                                    }
+                                }
+                                .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                            }
+                            .onDelete { indexSet in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    viewModel.deleteItems(at: indexSet)
+                                }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                    }
                 }
-                .accessibilityLabel("More options")
             }
-        }
-        #endif
-    }
-    
-    private var mainContent: some View {
-        VStack(spacing: 0) {
-            // Search bar
-            if !viewModel.items.isEmpty {
-                SearchBarView(viewModel: viewModel)
-            }
-            
-            // Category and Status Filters
-            if !viewModel.items.isEmpty {
-                FilterSectionView(viewModel: viewModel)
-            }
-            
-            // Input section
-            InputSectionView(
-                viewModel: viewModel,
-                inputText: $inputText,
-                isButtonDisabled: $isButtonDisabled,
-                isTextFieldFocused: Binding(
-                    get: { isTextFieldFocused },
-                    set: { isTextFieldFocused = $0 }
-                ),
-                selectedCategoryForNewItem: $selectedCategoryForNewItem,
-                onAddItem: addItem,
-                onMultiLinePaste: handleMultiLinePaste
-            )
-            
-            // Item counter and sort
-            CounterSectionView(viewModel: viewModel) {
-                #if os(iOS)
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                #endif
-                showClearAllAlert = true
-            }
-            
-            // List section
-            if viewModel.filteredAndSortedItems.isEmpty {
-                EmptyStateView(viewModel: viewModel)
-            } else {
-                ListSectionView(
-                    viewModel: viewModel,
-                    onEditItem: { item in
-                        editingItem = item
-                    },
-                    onDeleteItems: deleteItems,
-                    onDismissKeyboard: dismissKeyboard
-                )
-            }
-        }
-    }
-    
-    private func deleteItems(at offsets: IndexSet) {
-        #if os(iOS)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        #endif
-        let itemsToDelete = offsets.map { viewModel.filteredAndSortedItems[$0] }
-        for item in itemsToDelete {
-            viewModel.deleteItem(item)
+            .navigationTitle("Checklist")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
         }
     }
     
     private func addItem() {
-        let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty else { return }
+        let trimmed = newItemText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
         
-        #if os(iOS)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #if os(iOS) || os(visionOS)
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
         #endif
         
-        // Update ViewModel only when adding, not on every keystroke
-        viewModel.newItemText = trimmedText
-        viewModel.addItem(categoryId: selectedCategoryForNewItem)
-        
-        // Clear input and maintain focus
-        inputText = ""
-        isButtonDisabled = true
-        
-        // Auto-focus input after adding for quick entry
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            isTextFieldFocused = true
-        }
-    }
-    
-    private func handleMultiLinePaste(_ items: [String]) {
-        guard !items.isEmpty else { return }
-        
-        #if os(iOS)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        #endif
-        
-        // Add all items
-        for itemText in items {
-            viewModel.newItemText = itemText
-            viewModel.addItem(categoryId: selectedCategoryForNewItem)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            viewModel.addItem(text: trimmed)
         }
         
-        // Clear input and dismiss keyboard
-        inputText = ""
-        isButtonDisabled = true
-        dismissKeyboard()
-    }
-    
-    private func dismissKeyboard() {
-        isTextFieldFocused = false
-        #if os(iOS)
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        #endif
+        newItemText = ""
+        isTextFieldFocused = true
     }
 }
 
 struct ChecklistItemRow: View {
     let item: ChecklistItem
-    let category: Category
-    let onTap: () -> Void
-    let onEdit: () -> Void
-    let onArchive: () -> Void
-    var onUpdate: ((ChecklistItem) -> Void)?
-    @State private var showNotes = false
-    @State private var isHovered = false
-    @State private var isEditing = false
-    @State private var editedText: String = ""
-    @FocusState private var isTextFieldFocused: Bool
+    let onToggle: () -> Void
+    @State private var isPressed = false
     
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            // Checkbox - separate button with larger tap area
+        HStack(spacing: 16) {
             Button(action: {
-                #if os(iOS)
-                UISelectionFeedbackGenerator().selectionChanged()
+                #if os(iOS) || os(visionOS)
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
                 #endif
-                onTap()
+                onToggle()
             }) {
                 ZStack {
                     Circle()
-                        .fill(item.isChecked ? Color.successGreen : Color.clear)
-                        .frame(width: 26, height: 26)
+                        .fill(item.isCompleted ? Color.green : Color.clear)
+                        .frame(width: 28, height: 28)
                         .overlay(
                             Circle()
-                                .stroke(item.isChecked ? Color.successGreen : Color.secondaryGray.opacity(0.4), lineWidth: 2)
+                                .stroke(
+                                    item.isCompleted ? Color.green : Color.gray.opacity(0.4),
+                                    lineWidth: 2.5
+                                )
                         )
                     
-                    if item.isChecked {
+                    if item.isCompleted {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
-                .symbolEffect(.bounce, value: item.isChecked)
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: item.isChecked)
-                .accessibilityLabel(item.isChecked ? "Completed" : "Not completed")
-                .contentShape(Rectangle())
+                .scaleEffect(isPressed ? 0.9 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
             }
             .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
-            .padding(.top, 2)
-            
-            // Main content area
-            VStack(alignment: .leading, spacing: 8) {
-                if isEditing {
-                    // Inline editing mode
-                    HStack(spacing: 8) {
-                        TextField("Task", text: $editedText, axis: .vertical)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 17, weight: .medium, design: .rounded))
-                            .focused($isTextFieldFocused)
-                            .lineLimit(1...5)
-                            .onSubmit {
-                                saveEdit()
-                            }
-                            .onAppear {
-                                editedText = item.text
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTextFieldFocused = true
-                                }
-                            }
-                        
-                        Button {
-                            saveEdit()
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.successGreen)
-                                .font(.system(size: 20))
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Button {
-                            cancelEdit()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                                .font(.system(size: 20))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.vertical, 4)
-                    .transition(.opacity.combined(with: .scale))
-                } else {
-                    // Display mode - tap text to edit inline
-                    HStack(alignment: .top, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Button(action: {
-                                #if os(iOS)
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                #endif
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    isEditing = true
-                                }
-                            }) {
-                                Text(item.text)
-                                    .font(.system(size: 17, weight: item.isChecked ? .regular : .medium, design: .rounded))
-                                    .foregroundColor(item.isChecked ? .secondary : (item.status == .archived ? .secondary : .primary))
-                                    .strikethrough(item.isChecked, color: .secondary)
-                                    .multilineTextAlignment(.leading)
-                                    .lineSpacing(3)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(.plain)
-                            
-                            // Metadata row
-                            HStack(spacing: 6) {
-                                // Category badge
-                                HStack(spacing: 5) {
-                                    Circle()
-                                        .fill(Color(hex: category.color) ?? .blue)
-                                        .frame(width: 7, height: 7)
-                                    
-                                    Text(category.name)
-                                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                                }
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(
-                                    Capsule()
-                                        .fill(
-                                            (Color(hex: category.color) ?? .blue).opacity(0.12)
-                                        )
-                                        .shadow(color: (Color(hex: category.color) ?? .blue).opacity(0.1), radius: 2, x: 0, y: 1)
-                                )
-                                
-                                // Priority indicator
-                                if item.priority != .none {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: item.priority.icon)
-                                            .font(.system(size: 10, weight: .medium))
-                                        Text(item.priority.rawValue)
-                                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    }
-                                    .foregroundColor(item.priority.color)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(item.priority.color.opacity(0.15))
-                                    )
-                                }
-                                
-                                // Status indicators
-                                if item.status == .archived {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "archivebox.fill")
-                                            .font(.system(size: 10, weight: .medium))
-                                        Text("Archived")
-                                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    }
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.systemGray6)
-                                    )
-                                }
-                                
-                                // Due date
-                                if let dueDate = item.dueDate {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: item.isOverdue ? "exclamationmark.triangle.fill" : "calendar")
-                                            .font(.system(size: 10, weight: .medium))
-                                        Text(dueDate, style: .date)
-                                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    }
-                                    .foregroundColor(item.isOverdue ? .red : .secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(item.isOverdue ? Color.red.opacity(0.15) : Color.systemGray6)
-                                    )
-                                }
-                                
-                                Spacer()
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // Edit button (opens full edit sheet)
-                        Button(action: onEdit) {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(isHovered ? .primaryAccent : .secondary)
-                                .frame(width: 28, height: 28)
-                                .background(
-                                    Circle()
-                                        .fill(isHovered ? Color.primaryAccent.opacity(0.1) : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Edit item details")
-                        .opacity(isHovered ? 1 : 0.6)
-                    }
-                    
-                    // Notes section
-                    if !item.notes.isEmpty {
-                        Button(action: { 
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                showNotes.toggle()
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: showNotes ? "chevron.down" : "chevron.right")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                
-                                Text("Notes")
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                            }
-                            .padding(.top, 4)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        if showNotes {
-                            Text(item.notes)
-                                .font(.system(size: 13, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 16)
-                                .padding(.vertical, 8)
-                                .padding(.trailing, 8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.systemGray6.opacity(0.5))
-                                )
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 4)
-            .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isHovered ? Color.systemGray6.opacity(0.3) : Color.clear)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in isPressed = true }
+                    .onEnded { _ in isPressed = false }
             )
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isHovered = hovering
+            
+            Text(item.text)
+                .font(.system(size: 17, weight: item.isCompleted ? .regular : .medium, design: .rounded))
+                .strikethrough(item.isCompleted)
+                .foregroundColor(item.isCompleted ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onToggle()
                 }
-            }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(item.isChecked ? "Completed: \(item.text)" : item.text)
-        .accessibilityHint("Double tap to toggle completion, tap text to edit")
-    }
-    
-    private func saveEdit() {
-        let trimmed = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            cancelEdit()
-            return
-        }
-        
-        var updatedItem = item
-        updatedItem.text = trimmed
-        onUpdate?(updatedItem)
-        
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isEditing = false
-        }
-        
-        #if os(iOS)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-    }
-    
-    private func cancelEdit() {
-        editedText = item.text
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isEditing = false
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.systemBackgroundColor)
+                .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
+        )
+        .opacity(item.isCompleted ? 0.7 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: item.isCompleted)
     }
 }
 

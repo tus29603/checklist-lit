@@ -15,4 +15,3 @@ struct ChecklistLiteApp: App {
         }
     }
 }
-

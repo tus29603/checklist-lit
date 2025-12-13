@@ -7,34 +7,17 @@
 
 import Foundation
 
-struct ChecklistItem: Identifiable, Codable, Equatable, Hashable {
+struct ChecklistItem: Identifiable, Codable {
     let id: UUID
     var text: String
-    var isChecked: Bool // Deprecated, replaced by status
-    var categoryId: UUID
-    var priority: Priority
-    var status: ItemStatus
-    var dueDate: Date?
-    var notes: String
+    var isCompleted: Bool
     let createdAt: Date
-    var order: Int // For manual reordering
-
-    init(id: UUID = UUID(), text: String, isChecked: Bool = false, categoryId: UUID = Category.general.id, priority: Priority = .none, status: ItemStatus = .active, dueDate: Date? = nil, notes: String = "", createdAt: Date = Date(), order: Int = 0) {
+    
+    init(id: UUID = UUID(), text: String, isCompleted: Bool = false, createdAt: Date = Date()) {
         self.id = id
         self.text = text
-        self.isChecked = isChecked // Kept for migration, but status is primary
-        self.categoryId = categoryId
-        self.priority = priority
-        self.status = status
-        self.dueDate = dueDate
-        self.notes = notes
+        self.isCompleted = isCompleted
         self.createdAt = createdAt
-        self.order = order
-    }
-    
-    var isOverdue: Bool {
-        guard let dueDate = dueDate, status == .active else { return false }
-        return dueDate < Date()
     }
 }
 
