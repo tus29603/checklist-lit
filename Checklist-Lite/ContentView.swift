@@ -42,6 +42,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var selectedCategoryId: UUID? = nil // For filtering
     @State private var newItemCategoryId: UUID? = nil // For assigning to new items
+    @State private var showClearAllConfirmation = false
     
     // Computed property for filtered items
     private var filteredItems: [ChecklistItem] {
@@ -268,14 +269,47 @@ struct ContentView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showSettings = true
+                    Menu {
+                        if !viewModel.items.isEmpty {
+                            Button(role: .destructive) {
+                                showClearAllConfirmation = true
+                            } label: {
+                                Label("Clear All Items", systemImage: "trash")
+                            }
+                            
+                            Divider()
+                        }
+                        
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Label("Settings", systemImage: "gearshape.fill")
+                        }
                     } label: {
-                        Image(systemName: "gearshape.fill")
+                        Image(systemName: "ellipsis.circle.fill")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.primary.opacity(0.7))
+                            .foregroundColor(.blue)
                     }
                 }
+            }
+            .confirmationDialog(
+                "Clear All Items",
+                isPresented: $showClearAllConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Clear All", role: .destructive) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        viewModel.clearAllItems()
+                    }
+                    
+                    #if os(iOS) || os(visionOS)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    #endif
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Are you sure you want to delete all \(viewModel.items.count) item\(viewModel.items.count == 1 ? "" : "s")? This action cannot be undone.")
             }
             #if os(iOS) || os(visionOS)
             .fullScreenCover(isPresented: $showSettings) {

@@ -39,6 +39,11 @@ class ChecklistViewModel: ObservableObject {
         saveItems()
     }
     
+    func clearAllItems() {
+        items.removeAll()
+        saveItems()
+    }
+    
     private func saveItems() {
         if let encoded = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(encoded, forKey: itemsKey)
