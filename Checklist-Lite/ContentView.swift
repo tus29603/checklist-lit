@@ -40,6 +40,17 @@ struct ContentView: View {
     @State private var newItemText: String = ""
     @FocusState private var isTextFieldFocused: Bool
     @State private var showSettings = false
+    @State private var selectedCategoryId: UUID? = nil // For filtering
+    @State private var newItemCategoryId: UUID? = nil // For assigning to new items
+    
+    // Computed property for filtered items
+    private var filteredItems: [ChecklistItem] {
+        if let categoryId = selectedCategoryId {
+            return viewModel.items.filter { $0.categoryId == categoryId }
+        } else {
+            return viewModel.items
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -50,7 +61,7 @@ struct ContentView: View {
                 
                 VStack(spacing: 0) {
                     // Input section
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         HStack(spacing: 12) {
                             TextField("What needs to be done?", text: $newItemText)
                                 .textFieldStyle(.plain)
@@ -92,6 +103,65 @@ struct ContentView: View {
                             .scaleEffect(newItemText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.95 : 1.0)
                             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newItemText.isEmpty)
                         }
+                        
+                        // Category filter and assignment
+                        HStack(spacing: 12) {
+                            // Filter picker
+                            Menu {
+                                Button {
+                                    selectedCategoryId = nil
+                                } label: {
+                                    Label("All Categories", systemImage: selectedCategoryId == nil ? "checkmark" : "")
+                                }
+                                
+                                Divider()
+                                
+                                ForEach(viewModel.categoryManager.categories) { category in
+                                    Button {
+                                        selectedCategoryId = category.id
+                                    } label: {
+                                        Label(category.name, systemImage: selectedCategoryId == category.id ? "checkmark" : "")
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                                        .font(.system(size: 12))
+                                    
+                                    if let categoryId = selectedCategoryId,
+                                       let category = viewModel.categoryManager.categories.first(where: { $0.id == categoryId }) {
+                                        Circle()
+                                            .fill(Color(hex: category.color) ?? .blue)
+                                            .frame(width: 8, height: 8)
+                                        
+                                        Text(category.name)
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    } else {
+                                        Text("Filter")
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    }
+                                    
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 8, weight: .semibold))
+                                }
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.gray.opacity(0.1))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            
+                            // Category assignment for new items
+                            CategoryPickerView(
+                                categoryManager: viewModel.categoryManager,
+                                selectedCategoryId: $newItemCategoryId
+                            )
+                            
+                            Spacer()
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -128,21 +198,62 @@ struct ContentView: View {
                         }
                         .transition(.opacity.combined(with: .scale))
                         Spacer()
+                    } else if filteredItems.isEmpty {
+                        Spacer()
+                        VStack(spacing: 16) {
+                            Image(systemName: "tray")
+                                .font(.system(size: 48, weight: .light))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            
+                            Text("No items in this category")
+                                .font(.system(size: 17, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                            
+                            if selectedCategoryId != nil {
+                                Button {
+                                    selectedCategoryId = nil
+                                } label: {
+                                    Text("Show All Categories")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.blue.opacity(0.1))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity.combined(with: .scale))
                     } else {
                         List {
-                            ForEach(viewModel.items) { item in
-                                ChecklistItemRow(item: item) {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        viewModel.toggleItem(item)
+                            ForEach(filteredItems) { item in
+                                ChecklistItemRow(
+                                    item: item,
+                                    category: viewModel.categoryManager.category(for: item.categoryId),
+                                    onToggle: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            viewModel.toggleItem(item)
+                                        }
                                     }
-                                }
+                                )
                                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                             }
                             .onDelete { indexSet in
+                                // Map filtered indices to actual indices
+                                let actualIndices = IndexSet(
+                                    indexSet.map { filteredItems[$0].id }
+                                        .compactMap { itemId in
+                                            viewModel.items.firstIndex(where: { $0.id == itemId })
+                                        }
+                                )
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    viewModel.deleteItems(at: indexSet)
+                                    viewModel.deleteItems(at: actualIndices)
                                 }
                             }
                         }
@@ -189,7 +300,7 @@ struct ContentView: View {
         #endif
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            viewModel.addItem(text: trimmed)
+            viewModel.addItem(text: trimmed, categoryId: newItemCategoryId)
         }
         
         newItemText = ""
@@ -199,6 +310,7 @@ struct ContentView: View {
 
 struct ChecklistItemRow: View {
     let item: ChecklistItem
+    let category: Category
     let onToggle: () -> Void
     @State private var isPressed = false
     
@@ -239,15 +351,34 @@ struct ChecklistItemRow: View {
                     .onEnded { _ in isPressed = false }
             )
             
-            Text(item.text)
-                .font(.system(size: 17, weight: item.isCompleted ? .regular : .medium, design: .rounded))
-                .strikethrough(item.isCompleted)
-                .foregroundColor(item.isCompleted ? .secondary : .primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onToggle()
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.text)
+                    .font(.system(size: 17, weight: item.isCompleted ? .regular : .medium, design: .rounded))
+                    .strikethrough(item.isCompleted)
+                    .foregroundColor(item.isCompleted ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onToggle()
+                    }
+                
+                // Category badge
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color(hex: category.color) ?? .blue)
+                        .frame(width: 6, height: 6)
+                    
+                    Text(category.name)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule()
+                        .fill((Color(hex: category.color) ?? .blue).opacity(0.1))
+                )
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

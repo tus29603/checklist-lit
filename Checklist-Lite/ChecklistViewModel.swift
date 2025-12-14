@@ -12,6 +12,7 @@ import SwiftUI
 @MainActor
 class ChecklistViewModel: ObservableObject {
     @Published var items: [ChecklistItem] = []
+    @Published var categoryManager = CategoryManager()
     
     private let itemsKey = "SavedChecklistItems"
     
@@ -19,8 +20,9 @@ class ChecklistViewModel: ObservableObject {
         loadItems()
     }
     
-    func addItem(text: String) {
-        let newItem = ChecklistItem(text: text)
+    func addItem(text: String, categoryId: UUID? = nil) {
+        let category = categoryId ?? Category.general.id
+        let newItem = ChecklistItem(text: text, categoryId: category)
         items.append(newItem)
         saveItems()
     }
