@@ -39,6 +39,7 @@ struct ContentView: View {
     @StateObject private var viewModel = ChecklistViewModel()
     @State private var newItemText: String = ""
     @FocusState private var isTextFieldFocused: Bool
+    @State private var showSettings = false
     
     var body: some View {
         NavigationStack {
@@ -153,6 +154,27 @@ struct ContentView: View {
             .navigationTitle("Checklist")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.7))
+                    }
+                }
+            }
+            #if os(iOS) || os(visionOS)
+            .fullScreenCover(isPresented: $showSettings) {
+                SettingsView()
+            }
+            #else
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+                    .frame(minWidth: 500, minHeight: 600)
+            }
             #endif
         }
     }
