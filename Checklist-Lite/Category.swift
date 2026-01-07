@@ -21,3 +21,4 @@ struct Category: Identifiable, Codable, Equatable {
     static let general = Category(name: "General", color: "#8E8E93")
 }
 
+

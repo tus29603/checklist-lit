@@ -44,6 +44,51 @@ class ChecklistViewModel: ObservableObject {
         saveItems()
     }
     
+    func moveItems(from source: IndexSet, to destination: Int) {
+        items.move(fromOffsets: source, toOffset: destination)
+        saveItems()
+    }
+    
+    func moveFilteredItems(from source: IndexSet, to destination: Int, filteredItems: [ChecklistItem]) {
+        // Map filtered indices to actual item IDs
+        let sourceIds = source.map { filteredItems[$0].id }
+        
+        // Find the destination item ID
+        let destinationId = destination < filteredItems.count ? filteredItems[destination].id : nil
+        
+        // Get actual indices in the full items array
+        var actualSourceIndices: [Int] = []
+        for id in sourceIds {
+            if let index = items.firstIndex(where: { $0.id == id }) {
+                actualSourceIndices.append(index)
+            }
+        }
+        
+        // Find destination index in full array
+        var actualDestinationIndex: Int
+        if let destinationId = destinationId,
+           let destIndex = items.firstIndex(where: { $0.id == destinationId }) {
+            actualDestinationIndex = destIndex
+        } else {
+            // If destination is beyond filtered items, find the last item of the filtered category
+            if let lastFiltered = filteredItems.last,
+               let lastIndex = items.firstIndex(where: { $0.id == lastFiltered.id }) {
+                actualDestinationIndex = lastIndex + 1
+            } else {
+                actualDestinationIndex = items.count
+            }
+        }
+        
+        // Adjust destination if moving items before it
+        let itemsBeforeDestination = actualSourceIndices.filter { $0 < actualDestinationIndex }.count
+        actualDestinationIndex -= itemsBeforeDestination
+        
+        // Perform the move
+        let sourceIndexSet = IndexSet(actualSourceIndices)
+        items.move(fromOffsets: sourceIndexSet, toOffset: actualDestinationIndex)
+        saveItems()
+    }
+    
     private func saveItems() {
         if let encoded = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(encoded, forKey: itemsKey)

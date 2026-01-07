@@ -43,6 +43,7 @@ struct ContentView: View {
     @State private var selectedCategoryId: UUID? = nil // For filtering
     @State private var newItemCategoryId: UUID? = nil // For assigning to new items
     @State private var showClearAllConfirmation = false
+    @State private var editMode: EditMode = .inactive
     
     // Computed property for filtered items
     private var filteredItems: [ChecklistItem] {
@@ -257,6 +258,22 @@ struct ContentView: View {
                                     viewModel.deleteItems(at: actualIndices)
                                 }
                             }
+                            .onMove { source, destination in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    if selectedCategoryId == nil {
+                                        // No filter active - simple move
+                                        viewModel.moveItems(from: source, to: destination)
+                                    } else {
+                                        // Filter active - move within filtered items
+                                        viewModel.moveFilteredItems(from: source, to: destination, filteredItems: filteredItems)
+                                    }
+                                }
+                                
+                                #if os(iOS) || os(visionOS)
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                #endif
+                            }
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
@@ -268,6 +285,15 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.large)
             #endif
             .toolbar {
+                #if os(iOS) || os(visionOS)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !viewModel.items.isEmpty && !filteredItems.isEmpty {
+                        EditButton()
+                            .foregroundColor(.blue)
+                    }
+                }
+                #endif
+                
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         if !viewModel.items.isEmpty {
@@ -292,6 +318,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .environment(\.editMode, $editMode)
             .confirmationDialog(
                 "Clear All Items",
                 isPresented: $showClearAllConfirmation,
