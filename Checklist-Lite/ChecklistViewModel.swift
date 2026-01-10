@@ -34,6 +34,14 @@ class ChecklistViewModel: ObservableObject {
         }
     }
     
+    func updateItem(_ item: ChecklistItem, text: String, categoryId: UUID) {
+        if let index = items.firstIndex(where: { $0.id == item.id }) {
+            items[index].text = text
+            items[index].categoryId = categoryId
+            saveItems()
+        }
+    }
+    
     func deleteItems(at offsets: IndexSet) {
         items.remove(atOffsets: offsets)
         saveItems()

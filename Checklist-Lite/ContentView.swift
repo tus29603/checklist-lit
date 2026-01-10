@@ -44,6 +44,7 @@ struct ContentView: View {
     @State private var newItemCategoryId: UUID? = nil // For assigning to new items
     @State private var showClearAllConfirmation = false
     @State private var editMode: EditMode = .inactive
+    @State private var editingItem: ChecklistItem? = nil
     
     // Computed property for filtered items
     private var filteredItems: [ChecklistItem] {
@@ -240,6 +241,9 @@ struct ContentView: View {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                             viewModel.toggleItem(item)
                                         }
+                                    },
+                                    onEdit: {
+                                        editingItem = item
                                     }
                                 )
                                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
@@ -277,7 +281,20 @@ struct ContentView: View {
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
+                        .padding(.bottom, 50) // Add padding to prevent content from being hidden behind banner
                     }
+                    
+                    // Sticky banner ad at the bottom (iOS only)
+                    #if os(iOS)
+                    VStack(spacing: 0) {
+                        Divider()
+                            .background(Color.gray.opacity(0.2))
+                        
+                        AdMobBannerView()
+                            .frame(height: 50)
+                            .background(Color.systemBackgroundColor)
+                    }
+                    #endif
                 }
             }
             .navigationTitle("Checklist")
@@ -348,6 +365,18 @@ struct ContentView: View {
                     .frame(minWidth: 500, minHeight: 600)
             }
             #endif
+            .sheet(item: $editingItem) { item in
+                EditItemView(
+                    item: item,
+                    categoryManager: viewModel.categoryManager,
+                    onSave: { text, categoryId in
+                        viewModel.updateItem(item, text: text, categoryId: categoryId)
+                    }
+                )
+                #if os(macOS)
+                .frame(minWidth: 500, minHeight: 400)
+                #endif
+            }
         }
     }
     
@@ -373,6 +402,7 @@ struct ChecklistItemRow: View {
     let item: ChecklistItem
     let category: Category
     let onToggle: () -> Void
+    let onEdit: () -> Void
     @State private var isPressed = false
     
     var body: some View {
@@ -420,6 +450,7 @@ struct ChecklistItemRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        // Single tap to toggle
                         onToggle()
                     }
                 
@@ -440,6 +471,21 @@ struct ChecklistItemRow: View {
                         .fill((Color(hex: category.color) ?? .blue).opacity(0.1))
                 )
             }
+            
+            Spacer()
+            
+            Button(action: {
+                #if os(iOS) || os(visionOS)
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                #endif
+                onEdit()
+            }) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundColor(.blue.opacity(0.7))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

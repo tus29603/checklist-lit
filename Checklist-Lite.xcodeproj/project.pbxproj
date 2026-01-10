@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E80A0D5C2F11CC1200A282BE /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = E8E43FE22EED1F8B008D682F /* GoogleMobileAds */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E8E43FC52EED1F8B008D682F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +33,22 @@
 		E8E43FCE2EED1F8B008D682F /* Checklist-LiteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Checklist-LiteUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E80A11242F11D8B700A282BE /* Exceptions for "Checklist-Lite" folder in "Checklist-Lite" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E8E43FB62EED1F8A008D682F /* Checklist-Lite */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E8E43FB92EED1F8A008D682F /* Checklist-Lite */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E80A11242F11D8B700A282BE /* Exceptions for "Checklist-Lite" folder in "Checklist-Lite" target */,
+			);
 			path = "Checklist-Lite";
 			sourceTree = "<group>";
 		};
@@ -52,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E80A0D5C2F11CC1200A282BE /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +120,7 @@
 				E8E43FB32EED1F8A008D682F /* Sources */,
 				E8E43FB42EED1F8A008D682F /* Frameworks */,
 				E8E43FB52EED1F8A008D682F /* Resources */,
+				E8E43FE32EED1F8B008D682F /* Add GADApplicationIdentifier */,
 			);
 			buildRules = (
 			);
@@ -112,6 +131,7 @@
 			);
 			name = "Checklist-Lite";
 			packageProductDependencies = (
+				E8E43FE22EED1F8B008D682F /* GoogleMobileAds */,
 			);
 			productName = "Checklist-Lite";
 			productReference = E8E43FB72EED1F8A008D682F /* Checklist-Lite.app */;
@@ -195,6 +215,9 @@
 			);
 			mainGroup = E8E43FAE2EED1F8A008D682F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E8E43FE12EED1F8B008D682F /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E8E43FB82EED1F8A008D682F /* Products */;
 			projectDirPath = "";
@@ -230,6 +253,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		E8E43FE32EED1F8B008D682F /* Add GADApplicationIdentifier */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Add GADApplicationIdentifier";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Add GADApplicationIdentifier to Info.plist AFTER ProcessInfoPlistFile\n# Using runOnlyForDeploymentPostprocessing=1 ensures this runs at the very end\nINFOPLIST=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Info.plist\"\n\nif [ -f \"$INFOPLIST\" ]; then\n    # Add or update the GAD key with production App ID\n    /usr/libexec/PlistBuddy -c \"Set :GADApplicationIdentifier ca-app-pub-8853742472105910~7060661899\" \"$INFOPLIST\" 2>/dev/null || \\\n    /usr/libexec/PlistBuddy -c \"Add :GADApplicationIdentifier string ca-app-pub-8853742472105910~7060661899\" \"$INFOPLIST\" 2>/dev/null\n    \n    if [ $? -eq 0 ]; then\n        echo \"✅ GADApplicationIdentifier added: ca-app-pub-8853742472105910~7060661899\"\n        # Verify\n        if /usr/libexec/PlistBuddy -c \"Print :GADApplicationIdentifier\" \"$INFOPLIST\" 2>/dev/null | grep -q \"ca-app-pub-8853742472105910~7060661899\"; then\n            echo \"✅ Verified: GADApplicationIdentifier confirmed in Info.plist\"\n        else\n            echo \"⚠️ Warning: Verification failed\"\n        fi\n    else\n        echo \"⚠️ Error: Failed to add GADApplicationIdentifier\"\n    fi\nelse\n    echo \"⚠️ Error: Info.plist not found at $INFOPLIST\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E8E43FB32EED1F8A008D682F /* Sources */ = {
@@ -398,6 +443,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Checklist-Lite/Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -412,7 +458,8 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
+				NEW_SETTING = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tesfaldet.checklistlite;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -442,6 +489,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Checklist-Lite/Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -456,7 +504,8 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
+				NEW_SETTING = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tesfaldet.checklistlite;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -615,6 +664,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E8E43FE12EED1F8B008D682F /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E8E43FE22EED1F8B008D682F /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E8E43FE12EED1F8B008D682F /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E8E43FAF2EED1F8A008D682F /* Project object */;
 }
